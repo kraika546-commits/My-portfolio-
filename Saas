@@ -1,0 +1,182 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  TrendingUp, Users, DollarSign, PieChart, 
+  ArrowUpRight, ArrowDownRight, Activity, Zap 
+} from 'lucide-react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
+
+const MetricCard = ({ title, value, icon: Icon, trend, description, color }) => (
+  <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex justify-between items-start mb-4">
+      <div className={`p-2 rounded-xl ${color}`}>
+        <Icon size={20} className="text-white" />
+      </div>
+      {trend && (
+        <span className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${
+          trend > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+        }`}>
+          {trend > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          {Math.abs(trend)}%
+        </span>
+      )}
+    </div>
+    <h3 className="text-slate-500 text-sm font-medium">{title}</h3>
+    <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+    <p className="text-xs text-slate-400 mt-2">{description}</p>
+  </div>
+);
+
+export default function SaasCalculator() {
+  // Input States
+  const [arpu, setArpu] = useState(49);
+  const [customers, setCustomers] = useState(1000);
+  const [churn, setChurn] = useState(3.5);
+  const [cac, setCac] = useState(150);
+  const [margin, setMargin] = useState(80);
+
+  // Calculations
+  const metrics = useMemo(() => {
+    const mrr = customers * arpu;
+    const ltv = (arpu / (churn / 100));
+    const ltvCacRatio = ltv / cac;
+    const payback = cac / (arpu * (margin / 100));
+    
+    // Generate projection data for chart
+    const data = Array.from({ length: 12 }, (_, i) => ({
+      name: `Month ${i + 1}`,
+      revenue: mrr * (1 + (0.1 - churn/100) * i),
+      growth: 10 + i * 2
+    }));
+
+    return { mrr, ltv, ltvCacRatio, payback, data };
+  }, [arpu, customers, churn, cac, margin]);
+
+  const inputClass = "w-full bg-slate-50 border-none rounded-lg px-4 py-2 text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-all";
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">SaaS Metric Engine</h1>
+            <p className="text-slate-500">Real-time unit economics & growth projections</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+              <Zap size={18} /> Export Report
+            </button>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar Controls */}
+          <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-fit">
+            <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
+              <Activity size={20} className="text-indigo-600" /> Parameters
+            </h2>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">ARPU ($)</label>
+                <input type="number" value={arpu} onChange={(e) => setArpu(Number(e.target.value))} className={inputClass} />
+                <input type="range" min="10" max="1000" value={arpu} onChange={(e) => setArpu(Number(e.target.value))} className="w-full mt-2 accent-indigo-600" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Total Customers</label>
+                <input type="number" value={customers} onChange={(e) => setCustomers(Number(e.target.value))} className={inputClass} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Monthly Churn (%)</label>
+                <input type="number" step="0.1" value={churn} onChange={(e) => setChurn(Number(e.target.value))} className={inputClass} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">CAC ($)</label>
+                <input type="number" value={cac} onChange={(e) => setCac(Number(e.target.value))} className={inputClass} />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Dashboard */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* KPI Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <MetricCard 
+                title="MRR" 
+                value={`$${(metrics.mrr).toLocaleString()}`} 
+                icon={DollarSign} 
+                color="bg-indigo-600"
+                description="Monthly Recurring Revenue"
+              />
+              <MetricCard 
+                title="LTV" 
+                value={`$${metrics.ltv.toFixed(0)}`} 
+                icon={Users} 
+                color="bg-blue-500"
+                description="Lifetime Value per User"
+              />
+              <MetricCard 
+                title="LTV : CAC" 
+                value={`${metrics.ltvCacRatio.toFixed(1)}x`} 
+                icon={TrendingUp} 
+                trend={metrics.ltvCacRatio > 3 ? 12 : -5}
+                color="bg-emerald-500"
+                description="Health Score (Target > 3)"
+              />
+              <MetricCard 
+                title="Payback" 
+                value={`${metrics.payback.toFixed(1)} mo`} 
+                icon={PieChart} 
+                color="bg-amber-500"
+                description="Time to recover CAC"
+              />
+            </div>
+
+            {/* Charts Section */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-bold text-slate-900">Revenue Growth Projection</h3>
+                <select className="bg-slate-50 border-none rounded-lg text-sm px-3 py-1 text-slate-600">
+                  <option>Next 12 Months</option>
+                  <option>Next 24 Months</option>
+                </select>
+              </div>
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={metrics.data}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#4f46e5" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#colorRev)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
